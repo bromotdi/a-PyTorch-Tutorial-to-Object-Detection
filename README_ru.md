@@ -227,29 +227,29 @@ SSD — это полностью сверточная нейронная сет
 
 ![](./img/fcconv2.jpg)
 
-Here, the image of dimensions `2, 2, 3` need not be flattened, obviously. The convolutional layer uses two filters with `12` elements in the same shape as the image to perform two dot products. **These two filters, shown in gray, are the parameters of the convolutional layer.**
+Здесь изображение размером `2, 2, 3`, очевидно, не нужно выпрямлять. Сверточный слой использует два фильтра, по `12` элементов каждый, той же формы, что и изображение, для выполнения двух скалярных произведений. **Эти два фильтра, показанные серым цветом, являются параметрами сверточного слоя.**
 
-But here's the key part – **in both scenarios, the outputs `Y_0` and `Y_1` are the same!**
+Но вот ключевая часть – **в обоих сценариях выходы `Y_0` и `Y_1` одинаковы!**
 
 ![](./img/fcconv3.jpg)
 
-The two scenarios are equivalent.
+Оба сценария эквивалентны.
 
-What does this tell us?
+Что это нам говорит?
 
-That **on an image of size `H, W` with `I` input channels, a fully connected layer of output size `N` is equivalent to a convolutional layer with kernel size equal to the image size `H, W` and `N` output channels**, provided that the parameters of the fully connected network `N, H * W * I` are the same as the parameters of the convolutional layer `N, H, W, I`.
+**На изображении размером `H, W` с входными каналами `I` полносвязный слой с выходным размером `N` эквивалентен сверточному слою с размером ядра, равным размеру изображения `H, W` и с `N` выходными каналами**, при условии, что параметры полносвязной сети `N, H * W * I` совпадают с параметрами сверточного слоя `N, H, W, I`.
 
 ![](./img/fcconv4.jpg)
 
-Therefore, any fully connected layer can be converted to an equivalent convolutional layer simply **by reshaping its parameters**.
+Таким образом, любой полносвязанный слой можно преобразовать в эквивалентный сверточный слой, просто **изменив его параметры**.
 
-### Base Convolutions – part 2
+### Базовые свертки – часть 2
 
-We now know how to convert `fc6` and `fc7` in the original VGG-16 architecture into `conv6` and `conv7` respectively.
+Теперь мы знаем, как преобразовать `fc6` и `fc7` в оригинальной архитектуре VGG-16 в `conv6` и `conv7` соответственно.
 
-In the ImageNet VGG-16 [shown previously](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#base-convolutions--part-1), which operates on images of size `224, 224, 3`, you can see that the output of `conv5_3` will be of size `7, 7, 512`. Therefore –
+В ImageNet VGG-16 [показанной ранее] (https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#base-convolutions--part-1), которая работает с изображениями размером `224, 224, 3`, вы можете видеть, что выходные данные `conv5_3` будут иметь размер `7, 7, 512`. Следовательно –
 
-- `fc6` with a flattened input size of `7 * 7 * 512` and an output size of `4096` has parameters of dimensions `4096, 7 * 7 * 512`. **The equivalent convolutional layer `conv6` has a `7, 7` kernel size and `4096` output channels, with reshaped parameters of dimensions `4096, 7, 7, 512`.**
+- `fc6` с размером вытянутого входного вектора `7 * 7 * 512` и размером выходного вектора `4096` имеет параметры размерности `4096, 7 * 7 * 512`. **Эквивалентный сверточный слой `conv6` имеет размер ядра `7, 7` и `4096` выходных каналов, с измененной формой параметров размерности `4096, 7, 7, 512`.**
 
 - `fc7` with an input size of `4096` (i.e. the output size of `fc6`) and an output size `4096` has parameters of dimensions `4096, 4096`. The input could be considered as a `1, 1` image with `4096` input channels. **The equivalent convolutional layer `conv7` has a `1, 1` kernel size and `4096` output channels, with reshaped parameters of dimensions `4096, 1, 1, 4096`.**
 
