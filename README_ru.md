@@ -122,94 +122,94 @@
 
 По мере того, как мы продолжим, вы заметите, что в структуре и формулировке SSD заложено немало инженерных решений. Не волнуйтесь, если некоторые аспекты поначалу покажутся надуманными или не слишком спонтанными. Помните, что они основаны на _многолетних_ исследованиях (часто эмпирических) в данной области.
 
-### Some definitions
+### Некоторые определения
 
-A box is a box. A _bounding_ box is a box that wraps around an object i.e. represents its bounds.
+Box - это просто бокс. _bounding_ box - это ограничивающий бокс, который охватывает объект и представляет его границы.
 
-In this tutorial, we will encounter both types – just boxes and bounding boxes. But all boxes are represented on images and we need to be able to measure their positions, shapes, sizes, and other properties.
+В этом руководстве мы столкнемся с обеими типами - обычными боксами и ограничивающими боксами. Но для всех боксов, представленных на изображениях, нам нужно уметь измерять их положение, форму, размеры и другие свойства.
 
-#### Boundary coordinates
+#### Граничные координаты
 
-The most obvious way to represent a box is by the pixel coordinates of the `x` and `y` lines that constitute its boundaries.
+Самый очевидный способ представить бокс — это использовать пиксельные координаты линий `x` и `y`, которые составляют его границы.
 
 ![](./img/bc1.PNG)
 
-The boundary coordinates of a box are simply **`(x_min, y_min, x_max, y_max)`**.
+Граничные координаты бокса — это просто **`(x_min, y_min, x_max, y_max)`**.
 
-But pixel values are next to useless if we don't know the actual dimensions of the image.
-A better way would be to represent all coordinates is in their _fractional_ form.
+Но значения пикселей практически бесполезны, если мы не знаем фактических размеров изображения.
+Лучшим способом было бы представить все координаты в их дробной форме.
 
 ![](./img/bc2.PNG)
 
-Now the coordinates are size-invariant and all boxes across all images are measured on the same scale.
+Теперь координаты не зависят от размера, и все боксы на всех изображениях измеряются в одном масштабе.
 
-#### Center-Size coordinates
+####  Center-Size coordinates (Координаты центра и размера)
 
-This is a more explicit way of representing a box's position and dimensions.
+Это более явный способ представления положения и размеров бокса.
 
 ![](./img/cs.PNG)
 
-The center-size coordinates of a box are **`(c_x, c_y, w, h)`**.
+Координаты центра и размера бокса представляют собой: **`(c_x, c_y, w, h)`**.
 
-In the code, you will find that we routinely use both coordinate systems depending upon their suitability for the task, and _always_ in their fractional forms.
+В коде вы обнаружите, что мы обычно используем обе системы координат в зависимости от их пригодности для задачи, но _всегда_ в их дробных формах.
 
-#### Jaccard Index
+#### Jaccard Index (Коэффициент Жаккара)
 
-The Jaccard Index or Jaccard Overlap or Intersection-over-Union (IoU) measure the **degree or extent to which two boxes overlap**.
+Мера Жаккара или Jaccard Overlap или метрика Intersection over Union (IoU) измеряют **меру перекрытия двух боксов**.
 
 ![](./img/jaccard.jpg)
 
-An IoU of `1` implies they are the _same_ box, while a value of `0` indicates they're mutually exclusive spaces.
+Значение IoU, равное `1`, означает, что это один и тот же бокс, а значение `0` указывает, что это взаимоисключающие области.
 
-It's a simple metric, but also one that finds many applications in our model.
+Это простая метрика, но она находит множество применений в нашей модели.
 
 ### Multibox
 
-Multibox is a technique for detecting objects where a prediction consists of two components –
+Multibox — это метод для детекции объектов, где предсказание состоит из двух компонентов:
 
-- **Coordinates of a box that may or may not contain an object**. This is a _regression_ task.
+- **Координаты бокса, который может содержать или не содержать объект**. Это задача _регрессии_.
 
-- **Scores for various object types for this box**, including a _background_ class which implies there is no object in the box. This is a _classification_ task.
+- **Оценки для различных классов объектов для этого бокса**, включая класс _background_ (фона), который подразумевает, что в боксе нет объектов. Это задача _классификации_.
 
 ### Single Shot Detector (SSD)
 
-The SSD is a purely convolutional neural network (CNN) that we can organize into three parts –
+SSD — это полностью сверточная нейронная сеть (CNN), которую мы можем разделить на три части:
 
-- __Base convolutions__ derived from an existing image classification architecture that will provide lower-level feature maps.
+- __Базовые свертки__, полученные из существующей архитектуры классификации изображений, которые предоставят карты признаков более низкого уровня.
 
-- __Auxiliary convolutions__ added on top of the base network that will provide higher-level feature maps.
+- __Вспомогательные свертки__ (__Auxiliary convolutions__), добавленные поверх базовой сети, которые предоставят карты признаков более высокого уровня.
 
-- __Prediction convolutions__ that will locate and identify objects in these feature maps.
+- __Прогнозирующие свертки__, которые будут находить и идентифицировать объекты на этих картах признаков.
 
-The paper demonstrates two variants of the model called the SSD300 and the SSD512. The suffixes represent the size of the input image. Although the two networks differ slightly in the way they are constructed, they are in principle the same. The SSD512 is just a larger network and results in marginally better performance.
+В статье демонстрируются два варианта модели под названием SSD300 и SSD512. Суффиксы представляют размер входного изображения. Хотя эти две сети немного отличаются по способу построения, в принципе они одинаковы. SSD512 — это просто более крупная сеть, обеспечивающая немного лучшую производительность.
 
-For convenience, we will deal with the SSD300.
+Для удобства мы рассмотрим SSD300.
 
-### Base Convolutions – part 1
+### Базовые свертки – 1 часть
 
-First of all, why use convolutions from an existing network architecture?
+Прежде всего, зачем использовать свертки из существующей архитектуры нейронной сети?
 
-Because models proven to work well with image classification are already pretty good at capturing the basic essence of an image. The same convolutional features are useful for object detection, albeit in a more _local_ sense – we're less interested in the image as a whole than specific regions of it where objects are present.
+Потому что модели, доказавшие свою эффективность в классификации изображений, уже довольно хорошо улавливают основные черты изображения. Те же самые сверточные слои полезны для детекции объектов, хотя и в более _локальном_ смысле: нас интересуют конкретные области изображения, где присутствуют объекты, а не изображение в целом.
 
-There's also the added advantage of being able to use layers pretrained on a reliable classification dataset. As you may know, this is called **Transfer Learning**. By borrowing knowledge from a different but closely related task, we've made progress before we've even begun.
+Дополнительным преимуществом является возможность использовать слои, предварительно обученные на основе надежного набора данных для классификации. Как вы, возможно, знаете, это называется **Трансферное обучение**. Заимствуя знания из другой, но тесно связанной задачи, мы добились прогресса, даже не начав.
 
-The authors of the paper employ the **VGG-16 architecture** as their base network. It's rather simple in its original form.
+Авторы статьи используют **архитектуру VGG-16** в качестве базовой модели. В ее первоначальной форме она довольно проста.
 
 ![](./img/vgg16.PNG)
 
-They recommend using one that's pretrained on the _ImageNet Large Scale Visual Recognition Competition (ILSVRC)_ classification task. Luckily, there's one already available in PyTorch, as are other popular architectures. If you wish, you could opt for something larger like the ResNet. Just be mindful of the computational requirements.  
+Они рекомендуют использовать модель, предварительно обученную на задаче классификации _ImageNet Large Scale Visual Recognition Competition (ILSVRC)_. К счастью, такая модель уже доступна в PyTorch, также как и другие популярные архитектуры. Если хотите, вы можете выбрать что-то побольше, например ResNet. Просто помните о вычислительных требованиях.
 
-As per the paper, **we've to make some changes to this pretrained network** to adapt it to our own challenge of object detection. Some are logical and necessary, while others are mostly a matter of convenience or preference.
+Согласно статье, **мы должны внести некоторые изменения в эту предварительно обученную сеть**, чтобы адаптировать ее к нашей собственной задаче детекции объектов. Некоторые изменения логичны и необходимы, в то время как другие скорее вопрос удобства или предпочтения.
 
-- The **input image size** will be `300, 300`, as stated earlier.
+– **Размер входного изображения** будет равен `300, 300`, как было указано ранее.
 
-- The **3rd pooling layer**, which halves dimensions, will use the mathematical `ceiling` function instead of the default `floor` function in determining output size. This is significant only if the dimensions of the preceding feature map are odd and not even. By looking at the image above, you could calculate that for our input image size of `300, 300`, the `conv3_3` feature map will be of cross-section `75, 75`, which is halved to `38, 38` instead of an inconvenient `37, 37`.
+- **3-й слой пулинга**, который уменьшает размеры вдвое, будет использовать математическую функцию `ceiling` вместо используемой по умолчанию функции `floor` для определения размера выходного слоя. Это важно только в том случае, если размеры предыдущей карты признаков являются нечетные, а не четные. Глядя на изображение выше, вы можете подсчитать, что для входного изображения размером `300, 300` карта признаков `conv3_3` будет иметь поперечное сечение `75, 75`, которое уменьшит размеры вдвое до `38, 38`, вместо неудобного `37, 37`.
 
-- We modify the **5th pooling layer** from a `2, 2` kernel and `2` stride to a `3, 3` kernel and `1` stride. The effect this has is it no longer halves the dimensions of the feature map from the preceding convolutional layer.
+- Мы модифицируем **5-й слой пулинга** с ядром `2, 2` и шагом `2` на ядро `3, 3` и шаг `1`. Это означает, что теперь размеры карты признаков из предыдущего сверточного слоя уже не уменьшатся вдвое.
 
-- We don't need the fully connected (i.e. classification) layers because they serve no purpose here. We will toss `fc8` away completely, but choose to **_rework_ `fc6` and `fc7` into convolutional layers `conv6` and `conv7`**.
+- Нам не нужны полносвязные (т.е. классификационные) слои, потому что они не несут никакой ценной информации для данной задачи. Мы полностью отбрасываем `fc8`, но решаем **_переделать_ `fc6` и `fc7` в сверточные слои `conv6` и `conv7`**.
 
-The first three modifications are straightforward enough, but that last one probably needs some explaining.
+Первые три модификации достаточно просты, но последняя, вероятно, требует некоторых объяснений.
 
 ### FC → Convolutional Layer
 
