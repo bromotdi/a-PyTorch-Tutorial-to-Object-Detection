@@ -211,19 +211,19 @@ SSD — это полностью сверточная нейронная сет
 
 Первые три модификации достаточно просты, но последняя, вероятно, требует некоторых объяснений.
 
-### FC → Convolutional Layer
+### FC → Сверточный слой
 
-How do we reparameterize a fully connected layer into a convolutional layer?
+Как мы можем переопределить полносвязный слой в сверточный слой?
 
-Consider the following scenario.
+Рассмотрим следующий сценарий.
 
-In the typical image classification setting, the first fully connected layer cannot operate on the preceding feature map or image _directly_. We'd need to flatten it into a 1D structure.
+В типичной ситуации классификации изображений первый полносвязный слой не может работать _напрямую_ с предыдущей картой признаков или изображением. Мы должны преобразовать его в одномерный вектор.
 
 ![](./img/fcconv1.jpg)
 
-In this example, there's an image of dimensions `2, 2, 3`, flattened to a 1D vector of size `12`. For an output of size `2`, the fully connected layer computes two dot-products of this flattened image with two vectors of the same size `12`. **These two vectors, shown in gray, are the parameters of the fully connected layer.**
+В этом примере есть изображение размером `2, 2, 3`, вытянутое в одномерный вектор размером `12`. Для выхода размером `2` полносвязный слой вычисляет два скалярных произведения этого вытянутого изображения с двумя векторами того же размера `12`. **Эти два вектора, показанные серым цветом, являются параметрами полносвязного слоя.**
 
-Now, consider a different scenario where we use a convolutional layer to produce `2` output values.
+Теперь рассмотрим другой сценарий, в котором мы используем сверточный слой для получения `2`-х выходных значений.
 
 ![](./img/fcconv2.jpg)
 
