@@ -281,45 +281,45 @@ SSD — это полностью сверточная нейронная сет
 
 ![](./img/auxconv.jpg)
 
-We introduce four convolutional blocks, each with two layers. While size reduction happened through pooling in the base network, here it is facilitated by a stride of `2` in every second layer.
+Мы вводим четыре сверточных блока, каждый из которых состоит из двух слоев. В то время как в базовой сети уменьшение размера происходит за счет пулинга, здесь оно обеспечивается `stride=2` в каждом втором слое.
 
-Again, take note of the feature maps from `conv8_2`, `conv9_2`, `conv10_2`, and `conv11_2`.
+Еще раз обратите внимание на карты признаков из `conv8_2`, `conv9_2`, `conv10_2` и `conv11_2`.
 
-### A detour
+### Отступление
 
-Before we move on to the prediction convolutions, we must first understand what it is we are predicting. Sure, it's objects and their positions, _but in what form?_
+Прежде чем мы перейдем к сверточным слоям предсказаний, мы должны сначала понять, что именно мы предсказываем. Конечно, это объекты и их положения, _но в какой форме?_
 
-It is here that we must learn about _priors_ and the crucial role they play in the SSD.
+Именно здесь мы должны узнать о _priors_ и той решающей роли, которую они играют в SSD.
 
 #### Priors
 
-Object predictions can be quite diverse, and I don't just mean their type. They can occur at any position, with any size and shape. Mind you, we shouldn't go as far as to say there are _infinite_ possibilities for where and how an object can occur. While this may be true mathematically, many options are simply improbable or uninteresting. Furthermore, we needn't insist that boxes are pixel-perfect.
+Предсказания объектов могут быть весьма разнообразными, и я имею в виду не только их тип. Они могут возникнуть в любом месте, иметь любой размер и форму. Заметьте, что мы не должны говорить о _бесконечных_ возможностях того, где и как может появиться объект. Хотя с математической точки зрения это может быть правдой, многие варианты просто маловероятны или неинтересны. Более того, нам не обязательно добиваться того, чтобы боксы были идеальны до пикселя.
 
-In effect, we can discretize the mathematical space of potential predictions into just _thousands_ of possibilities.
+По сути, мы можем дискретизировать математическое пространство потенциальных предсказаний всего лишь на _тысячи_ возможностей.
 
-**Priors are precalculated, fixed boxes which collectively represent this universe of probable and approximate box predictions**.
+**Priors — это заранее рассчитанные фиксированные боксы, которые в совокупности представляют эту вселенную вероятных и приблизительных предсказаний**.
 
-Priors are manually but carefully chosen based on the shapes and sizes of ground truth objects in our dataset. By placing these priors at every possible location in a feature map, we also account for variety in position.
+Priors выбираются вручную, но тщательно, на основе форм и размеров основных объектов в нашем наборе данных. Размещая эти priors во всех возможных местах на карте объектов, мы также учитываем разнообразие их положений.
 
-In defining the priors, the authors specify that –
+Определяя priors, авторы уточняют следующее:
 
-- **they will be applied to various low-level and high-level feature maps**, viz. those from `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2`, and `conv11_2`. These are the same feature maps indicated on the figures before.
+- **они будут применяться к различным картам признаков - низкого и высокого уровня**, а именно тем, которые получаются из `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2` и `conv11_2`. Это те же карты признаков, которые были указаны на рисунках ранее.
 
-- **if a prior has a scale `s`, then its area is equal to that of a square with side `s`**. The largest feature map, `conv4_3`, will have priors with a scale of `0.1`, i.e. `10%` of image's dimensions, while the rest have priors with scales linearly increasing from `0.2` to `0.9`. As you can see, larger feature maps have priors with smaller scales and are therefore ideal for detecting smaller objects.
+- **если prior имеет масштаб `s`, то его площадь равна площади квадрата со стороной `s`**. Самая большая карта признаков, `conv4_3`, будет иметь priors  масштаба `0.1`, т.е. `10%` от размера изображения, тогда как остальные будут иметь priors с масштабами, линейно увеличивающимися от `0.2` до `0.9`. Как видите, карты признаков большего размера имеют priors меньшего масштаба и поэтому идеально подходят для обнаружения объектов меньшего размера.
 
-- **At _each_ position on a feature map, there will be priors of various aspect ratios**. All feature maps will have priors with ratios `1:1, 2:1, 1:2`. The intermediate feature maps of `conv7`, `conv8_2`, and `conv9_2` will _also_ have priors with ratios `3:1, 1:3`. Moreover, all feature maps will have *one extra prior* with an aspect ratio of `1:1` and at a scale that is the geometric mean of the scales of the current and subsequent feature map.
+- **на _каждой_ позиции карты признаков будут priors с различными соотношениями сторон**. Все карты признаков будут иметь priors с соотношениями сторон `1:1, 2:1, 1:2`. Промежуточные карты признаков `conv7`, `conv8_2` и `conv9_2` _также_ будут иметь priors с соотношениями сторон `3:1, 1:3`. Более того, все карты признаков будут иметь *один дополнительный prior* с соотношением сторон `1:1` и масштабом, равным геометрическому среднему масштабов текущей и последующей карт признаков.
 
-| Feature Map From | Feature Map Dimensions | Prior Scale | Aspect Ratios | Number of Priors per Position | Total Number of Priors on this Feature Map |
+| Источник карты признаков | Размерность карты признаков | Масштаб Prior | Соотношения сторон | Количество Priors на позицию | Общее количество Priors на этой карте признаков |
 | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: |
-| `conv4_3`      | 38, 38       | 0.1 | 1:1, 2:1, 1:2 + an extra prior | 4 | 5776 |
-| `conv7`      | 19, 19       | 0.2 | 1:1, 2:1, 1:2, 3:1, 1:3 + an extra prior | 6 | 2166 |
-| `conv8_2`      | 10, 10       | 0.375 | 1:1, 2:1, 1:2, 3:1, 1:3 + an extra prior | 6 | 600 |
-| `conv9_2`      | 5, 5       | 0.55 | 1:1, 2:1, 1:2, 3:1, 1:3 + an extra prior | 6 | 150 |
-| `conv10_2`      | 3,  3       | 0.725 | 1:1, 2:1, 1:2 + an extra prior | 4 | 36 |
-| `conv11_2`      | 1, 1       | 0.9 | 1:1, 2:1, 1:2 + an extra prior | 4 | 4 |
-| **Grand Total**      |    –    | – | – | – | **8732 priors** |
+| `conv4_3`      | 38, 38       | 0.1 | 1:1, 2:1, 1:2 + дополнительный prior | 4 | 5776 |
+| `conv7`      | 19, 19       | 0.2 | 1:1, 2:1, 1:2, 3:1, 1:3 + дополнительный prior | 6 | 2166 |
+| `conv8_2`      | 10, 10       | 0.375 | 1:1, 2:1, 1:2, 3:1, 1:3 + дополнительный prior | 6 | 600 |
+| `conv9_2`      | 5, 5       | 0.55 | 1:1, 2:1, 1:2, 3:1, 1:3 + дополнительный prior | 6 | 150 |
+| `conv10_2`      | 3,  3       | 0.725 | 1:1, 2:1, 1:2 + дополнительный prior | 4 | 36 |
+| `conv11_2`      | 1, 1       | 0.9 | 1:1, 2:1, 1:2 + дополнительный prior | 4 | 4 |
+| **Итого**      |    –    | – | – | – | **8732 priors** |
 
-There are a total of 8732 priors defined for the SSD300!
+Всего определено 8732 priors для SSD300!
 
 #### Visualizing Priors
 
