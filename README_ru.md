@@ -365,7 +365,7 @@ Priors выбираются вручную, но тщательно, на осн
 
 Это ответ на вопрос, который мы задали в [начале этого раздела](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#a-detour). Учитывая, что каждый prior корректируется для получения более точного предсказания, **эти четыре смещения `(g_c_x, g_c_y, g_w, g_h)` представляют собой форму, в которой мы будем регрессировать координаты ограничивающих боксов**.
 
-As you can see, each offset is normalized by the corresponding dimension of the prior. This makes sense because a certain offset would be less significant for a larger prior than it would be for a smaller prior.
+Как видите, каждое смещение нормализуется по размеренности соответствующего prior. Это имеет смысл, поскольку определенное смещение будет менее значимым для большего prior, чем для меньшего.
 
 ### Prediction convolutions
 
