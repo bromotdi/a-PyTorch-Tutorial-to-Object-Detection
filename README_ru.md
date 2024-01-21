@@ -251,33 +251,33 @@ SSD — это полностью сверточная нейронная сет
 
 - `fc6` с размером вытянутого входного вектора `7 * 7 * 512` и размером выходного вектора `4096` имеет параметры размерности `4096, 7 * 7 * 512`. **Эквивалентный сверточный слой `conv6` имеет размер ядра `7, 7` и `4096` выходных каналов, с измененной формой параметров размерности `4096, 7, 7, 512`.**
 
-- `fc7` with an input size of `4096` (i.e. the output size of `fc6`) and an output size `4096` has parameters of dimensions `4096, 4096`. The input could be considered as a `1, 1` image with `4096` input channels. **The equivalent convolutional layer `conv7` has a `1, 1` kernel size and `4096` output channels, with reshaped parameters of dimensions `4096, 1, 1, 4096`.**
+- `fc7` с входным размером `4096` (т. е. выходным размером `fc6`) и выходным размером `4096` имеет параметры размеренности `4096, 4096`. Входные данные можно рассматривать как изображение `1, 1` с `4096` входными каналами. **Эквивалентный сверточный слой `conv7` имеет размер ядра `1, 1` и `4096` выходных каналов, с измененной формой размеренности параметров `4096, 1, 1, 4096`.**
 
-We can see that `conv6` has `4096` filters, each with dimensions `7, 7, 512`, and `conv7` has `4096` filters, each with dimensions `1, 1, 4096`.
+Мы видим, что у `conv6` есть `4096` фильтров, каждый размеренности `7, 7, 512`, а у `conv7` есть `4096` фильтров, каждый размеренности `1, 1, 4096`.
 
-These filters are numerous and large – and computationally expensive.
+Эти фильтры многочисленны, большие и требуют значительных вычислительных затрат.
 
-To remedy this, the authors opt to **reduce both their number and the size of each filter by subsampling parameters** from the converted convolutional layers.
+Чтобы исправить это, авторы решили **уменьшить как количество фильтров, так и размер каждого фильтра, выполнив субдискретизацию (subsampling) параметров** из преобразованных сверточных слоев.
 
-- `conv6` will use `1024` filters, each with dimensions `3, 3, 512`. Therefore, the parameters are subsampled from `4096, 7, 7, 512` to `1024, 3, 3, 512`.
+- `conv6` будет использовать `1024` фильтра, каждый размером `3, 3, 512`. Следовательно, параметры субдискретизируются с `4096, 7, 7, 512` до `1024, 3, 3, 512`.
 
-- `conv7` will use `1024` filters, each with dimensions `1, 1, 1024`. Therefore, the parameters are subsampled from `4096, 1, 1, 4096` to `1024, 1, 1, 1024`.
+- `conv7` будет использовать `1024` фильтра, каждый размером `1, 1, 1024`. Следовательно, параметры субдискретизируются с `4096, 1, 1, 4096` до `1024, 1, 1, 1024`.
 
-Based on the references in the paper, we will **subsample by picking every `m`th parameter along a particular dimension**, in a process known as [_decimation_](https://en.wikipedia.org/wiki/Downsampling_(signal_processing)).  
+Основываясь на ссылках в статье, мы будем **субдискретизировать, выбирая каждый `m`-й параметр  вдоль конкретного измерения** в процессе, известном как [_децимация_](https://ru.wikipedia.org/wiki/%D0%94%D0%B5%D1%86%D0%B8%D0%BC%D0%B0%D1%86%D0%B8%D1%8F_(%D0%BE%D0%B1%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0_%D1%81%D0%B8%D0%B3%D0%BD%D0%B0%D0%BB%D0%BE%D0%B2)).  
 
-Since the kernel of `conv6` is decimated from `7, 7` to `3,  3` by keeping only every 3rd value, there are now _holes_ in the kernel. Therefore, we would need to **make the kernel dilated or _atrous_**.
+Поскольку ядро `conv6` децимируется с `7, 7` до `3, 3`, сохраняя только каждое третье значение, в ядре теперь есть _пропуски_. Следовательно, нам нужно будет **сделать ядро расширенным (dilated или _atrous_)**.
 
-This corresponds to a dilation of `3` (same as the decimation factor `m = 3`). However, the authors actually use a dilation of `6`, possibly because the 5th pooling layer no longer halves the dimensions of the preceding feature map.
+Это соответствует расширению - dilation - `3` (так же, как коэффициент децимации `m = 3`). Однако на самом деле авторы используют расширение `6`, возможно, потому, что 5-й слой пулинга больше не уменьшает вдвое размеры предыдущей карты признаков.
 
-We are now in a position to present our base network, **the modified VGG-16**.
+Теперь мы можем представить нашу базовую сеть, **модифицированную VGG-16**.
 
 ![](./img/modifiedvgg.PNG)
 
-In the above figure, pay special attention to the outputs of `conv4_3` and `conv_7`. You will see why soon enough.
+На рисунке выше обратите особое внимание на выходные данные `conv4_3` и `conv_7`. Вскоре вы поймете, почему.
 
-### Auxiliary Convolutions
+### Вспомогательные свертки (Auxiliary Convolutions)
 
-We will now **stack some more convolutional layers on top of our base network**. These convolutions provide additional feature maps, each progressively smaller than the last.
+Теперь мы **добавим еще несколько сверточных слоев поверх нашей базовой сети**. Эти свертки предоставляют дополнительные карты признаков, каждая из которых становится меньше предыдущей.
 
 ![](./img/auxconv.jpg)
 
