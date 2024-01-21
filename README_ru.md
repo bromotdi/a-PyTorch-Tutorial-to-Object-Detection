@@ -307,9 +307,9 @@ Priors выбираются вручную, но тщательно, на осн
 
 - **если prior имеет масштаб `s`, то его площадь равна площади квадрата со стороной `s`**. Самая большая карта признаков, `conv4_3`, будет иметь priors  масштаба `0.1`, т.е. `10%` от размера изображения, тогда как остальные будут иметь priors с масштабами, линейно увеличивающимися от `0.2` до `0.9`. Как видите, карты признаков большего размера имеют priors меньшего масштаба и поэтому идеально подходят для обнаружения объектов меньшего размера.
 
-- **на _каждой_ позиции карты признаков будут priors с различными соотношениями сторон**. Все карты признаков будут иметь priors с соотношениями сторон `1:1, 2:1, 1:2`. Промежуточные карты признаков `conv7`, `conv8_2` и `conv9_2` _также_ будут иметь priors с соотношениями сторон `3:1, 1:3`. Более того, все карты признаков будут иметь *один дополнительный prior* с соотношением сторон `1:1` и масштабом, равным геометрическому среднему масштабов текущей и последующей карт признаков.
+- **в _каждой_ ячейке карты признаков будут priors с различными соотношениями сторон**. Все карты признаков будут иметь priors с соотношениями сторон `1:1, 2:1, 1:2`. Промежуточные карты признаков `conv7`, `conv8_2` и `conv9_2` _также_ будут иметь priors с соотношениями сторон `3:1, 1:3`. Более того, все карты признаков будут иметь *один дополнительный prior* с соотношением сторон `1:1` и масштабом, равным геометрическому среднему масштабов текущей и последующей карт признаков.
 
-| Источник карты признаков | Размерность карты признаков | Масштаб Prior | Соотношения сторон | Количество Priors на позицию | Общее количество Priors на этой карте признаков |
+| Источник карты признаков | Размерность карты признаков | Масштаб Prior | Соотношения сторон | Количество Priors в ячейке | Общее количество Priors на этой карте признаков |
 | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: |
 | `conv4_3`      | 38, 38       | 0.1 | 1:1, 2:1, 1:2 + дополнительный prior | 4 | 5776 |
 | `conv7`      | 19, 19       | 0.2 | 1:1, 2:1, 1:2, 3:1, 1:3 + дополнительный prior | 6 | 2166 |
@@ -321,49 +321,49 @@ Priors выбираются вручную, но тщательно, на осн
 
 Всего определено 8732 priors для SSD300!
 
-#### Visualizing Priors
+#### Визуализация Priors
 
-We defined the priors in terms of their _scales_ and _aspect ratios_.
+Мы определили priors с точки зрения их _масштабов_ и _соотношений сторон_.
 
 ![](./img/wh1.jpg)
 
-Solving these equations yields a prior's dimensions `w` and `h`.
+Решение этих уравнений дает  размеры prior `w` и `h`.
 
 ![](./img/wh2.jpg)
 
-We're now in a position to draw them on their respective feature maps.
+Теперь мы можем нарисовать их на соответствующих картах признаков.
 
-For example, let's try to visualize what the priors will look like at the central tile of the feature map from `conv9_2`.
+Например, давайте попробуем визуализировать, как будут выглядеть priors в центральной ячейке карты признаков из `conv9_2`.
 
 ![](./img/priors1.jpg)
 
-The same priors also exist for each of the other tiles.
+Те же priors существуют и для каждой из остальных ячеек.
 
 ![](./img/priors2.jpg)
 
-#### Predictions vis-à-vis Priors
+#### Предсказания по отношению к Priors
 
-[Earlier](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#multibox), we said we would use regression to find the coordinates of an object's bounding box. But then, surely, the priors can't represent our final predicted boxes?
+[Ранее](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#multibox) мы говорили, что будем использовать регрессию для определения координат ограничивающего бокса объекта. Но тогда priors, конечно же, не могут представлять наши окончательные предсказанные боксы?
 
-They don't.
+Они этого и не делают.
 
-Again, I would like to reiterate that the priors represent, _approximately_, the possibilities for prediction.
+Повторюсь, что priors представляют собой _приблизительно_ возможные предсказания.
 
-This means that **we use each prior as an approximate starting point and then find out how much it needs to be adjusted to obtain a more exact prediction for a bounding box**.
+Это означает, что **мы используем каждый prior в качестве приблизительной отправной точки, а затем выясняем, насколько его нужно скорректировать, чтобы получить более точный прогноз для ограничивающего бокса**.
 
-So if each predicted bounding box is a slight deviation from a prior, and our goal is to calculate this deviation, we need a way to measure or quantify it.
+Таким образом, если каждый предсказанный ограничивающий бокс представляет собой небольшое отклонение от prior, и наша цель — вычислить это отклонение, нам нужен способ измерить его или определить количество.
 
-Consider a cat, its predicted bounding box, and the prior with which the prediction was made.  
+Рассмотрим кошку, ее предсказанный ограничивающий бокс и prior, с помощью которого было сделано предсказание.
 
 ![](./img/ecs1.PNG)
 
-Assume they are represented in center-size coordinates, which we are familiar with.
+Предположим, что они представлены в center-size координатах, с которыми мы знакомы.
 
-Then –
+Затем -
 
 ![](./img/ecs2.PNG)
 
-This answers the question we posed at the [beginning of this section](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#a-detour). Considering that each prior is adjusted to obtain a more precise prediction, **these four offsets `(g_c_x, g_c_y, g_w, g_h)` are the form in which we will regress bounding boxes' coordinates**.
+Это ответ на вопрос, который мы задали в [начале этого раздела](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#a-detour). Учитывая, что каждый prior корректируется для получения более точного предсказания, **эти четыре смещения `(g_c_x, g_c_y, g_w, g_h)` представляют собой форму, в которой мы будем регрессировать координаты ограничивающих боксов**.
 
 As you can see, each offset is normalized by the corresponding dimension of the prior. This makes sense because a certain offset would be less significant for a larger prior than it would be for a smaller prior.
 
