@@ -431,9 +431,9 @@ Priors выбираются вручную, но тщательно, на осн
 
 ### Функция потерь для Multibox
 
-Основываясь на характере наших предсказаний, легко понять, почему нам может понадобиться уникальная функция потерь. Многие из нас раньше рассчитывали лосси в задачах регрессии или классификации, но редко, если вообще когда-либо, делали это _одновременно_.
+Основываясь на характере наших предсказаний, легко понять, почему нам может понадобиться уникальная функция потерь. Многие из нас раньше рассчитывали лосси в задачах регрессии или классификации, но редко, если вообще когда-нибудь, делали это _одновременно_.
 
-Очевидно, что наш общий лосс должен представлять собой **совокупность лоссов от обеих типов предсказаний** – локализации ограничивающих боксов и оценок классов.
+Очевидно, что наш сложенный лосс должен представлять собой **совокупность лоссов от обоих типов предсказаний** – локализации ограничивающих боксов и оценок классов.
 
 Тогда остается ответить на несколько вопросов:
 
@@ -447,33 +447,33 @@ Priors выбираются вручную, но тщательно, на осн
 
 >_У нас есть 8732 предсказания! Разве большинство из них не будет содержать объектов? Мы их вообще будем рассматривать?_
 
-Phew. Let's get to work.
+Уф… Давайте приступим.
 
-#### Matching predictions to ground truths
+#### Сопоставление предсказаний с истинными значениями (ground truths)
 
-Remember, the nub of any supervised learning algorithm is that **we need to be able to match predictions to their ground truths**. This is tricky since object detection is more open-ended than the average learning task.
+Помните, что суть любого алгоритма обучения с учителем заключается в том, чтобы **иметь возможность сопоставлять предсказания с их истинными значениями (ground truths)**. Это сложно, поскольку детекция объектов является более разнообразной задачей, чем обычная задача обучения.
 
-For the model to learn _anything_, we'd need to structure the problem in a way that allows for comparisons between our predictions and the objects actually present in the image.
+Чтобы модель могла изучить что-либо, нам необходимо сформулировать задачу таким образом, чтобы можно было сравнивать наши предсказания с объектами, действительно присутствующими на изображении.
 
-Priors enable us to do exactly this!
+Priors позволяют нам сделать именно это!
 
-- **Find the Jaccard overlaps** between the 8732 priors and `N` ground truth objects. This will be a tensor of size `8732, N`.
+- **Вычислите Коэффициент Жаккара** между 8732 priors и `N` объектами ground truth. Это создаст тензор размера `8732, N`.
 
-- **Match** each of the 8732 priors to the object with which it has the greatest overlap.
+- **Сопоставьте** каждый из 8732 priors с объектом, с которым у него наибольшее перекрытие.
 
-- If a prior is matched with an object with a **Jaccard overlap of less than `0.5`**, then it cannot be said to "contain" the object, and is therefore a **_negative_ match**. Considering we have thousands of priors, most priors will test negative for an object.
+- Если prior при сопоставлении с объектом дает **коэффициент Жаккара менее `0,5`**, то нельзя сказать, что он "содержит" объект и, следовательно, является **_отрицательным_ совпадением**. Учитывая, что у нас есть тысячи priors, большинство priors для объекта будут отрицательными.
 
-- On the other hand, a handful of priors will actually **overlap significantly (greater than `0.5`)** with an object, and can be said to "contain" that object. These are **_positive_ matches**.
+- С другой стороны, несколько priors фактически **значительно перекрываются (более `0,5`)** с объектом, и можно сказать, что они "содержат" объект. Это **_положительные_ совпадения**.
 
-- Now that we have **matched each of the 8732 priors to a ground truth**, we have, in effect, also **matched the corresponding 8732 predictions to a ground truth**.  
+- Теперь, когда мы **сопоставили каждый из 8732 priors с истинным значением**, мы, по сути, также **сопоставили соответствующие 8732 предсказания с истинными значениями**.
 
-Let's reproduce this logic with an example.
+Воспроизведем эту логику на примере.
 
 ![](./img/matching1.PNG)
 
-For convenience, we will assume there are just seven priors, shown in red. The ground truths are in yellow – there are three actual objects in this image.
+Для удобства мы предположим, что существует всего семь priors, обозначенных красным цветом. Истинные значения выделены желтым цветом — на этом изображении есть три реальных объекта.
 
-Following the steps outlined earlier will yield the following matches –
+Следуя ранее описанным шагам, получим следующие совпадения:
 
 ![](./img/matching2.jpg)
 
