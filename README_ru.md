@@ -379,73 +379,73 @@ Priors выбираются вручную, но тщательно, на осн
 
 Для выполнения этого самым простым способом, **нам нужны два сверточных слоя для каждой карты признаков** –
 
-- a **_localization_ prediction** convolutional layer with a `3,  3` kernel evaluating at each location (i.e. with padding and stride of `1`) with `4` filters for _each_ prior present at the location.
+- сверточный слой  для **предсказания локализации бокса (_localization_)** с ядром `3, 3`, проходящим по каждой ячейке (т. е. с паддингом и шагом `1`) и `4` фильтрами для _каждого_ prior присутствующем в данной ячейке.
 
-  The `4` filters for a prior calculate the four encoded offsets `(g_c_x, g_c_y, g_w, g_h)` for the bounding box predicted from that prior.
+   Эти `4` фильтра для prior вычисляют четыре закодированных смещения `(g_c_x, g_c_y, g_w, g_h)` для ограничивающего бокса, предсказанного на основе этого prior.
 
-- a **_class_ prediction** convolutional layer with a `3,  3` kernel evaluating at each location (i.e. with padding and stride of `1`) with `n_classes` filters for _each_ prior present at the location.
+- сверточный слой **предсказания _класса_** с ядром `3, 3`, проходящим по каждой ячейке (т. е. с паддингом и шагом `1`) и `n_classes` фильтрами для _каждого_ prior присутствующем в данной ячейке.
 
-  The `n_classes` filters for a prior calculate a set of `n_classes` scores for that prior.
-
+   Эти `n_classes` фильтры для prior рассчитывают `n_classes` оценок для этого prior.
+  
 ![](./img/predconv1.jpg)
 
-All our filters are applied with a kernel size of `3, 3`.
+Все наши фильтры применяются с размером ядра `3, 3`.
 
-We don't really need kernels (or filters) in the same shapes as the priors because the different filters will _learn_ to make predictions with respect to the different prior shapes.
+На самом деле нам не нужны ядра (или фильтры) той же формы, что и priors, потому что разные фильтры научатся делать прогнозы в отношении различных форм priors.
 
-Let's take a look at the **outputs of these convolutions**. Consider again the feature map from `conv9_2`.
+Давайте посмотрим на **выходные данные этих сверток**. Рассмотрим еще раз карту признаков из `conv9_2`.
 
 ![](./img/predconv2.jpg)
 
-The outputs of the localization and class prediction layers are shown in blue and yellow respectively. You can see that the cross-section (`5, 5`) remains unchanged.
+Выходные данные слоев локализации и предсказания классов показаны синим и желтым цветом соответственно. Вы можете видеть, что поперечный разрез (`5, 5`) остается неизменным.
 
-What we're really interested in is the _third_ dimension, i.e. the channels. These contain the actual predictions.
+Что нас действительно интересует, так это _третье_ измерение, то есть количество каналов. Они содержат фактические предсказания.
 
-If you **choose a tile, _any_ tile, in the localization predictions and expand it**, what will you see?
+Если вы **выберете ячейку, _любую_ ячейку, в предсказаниях локализации и развернете ее**, что вы увидите?
 
 ![](./img/predconv3.jpg)
 
-Voilà! The channel values at each position of the localization predictions represent the encoded offsets with respect to the priors at that position.
+Вуаля! Значение каналов в каждой ячейке предсказаний локализации представляют собой закодированные смещения относительно priors в этой ячейке.
 
-Now, **do the same with the class predictions.** Assume `n_classes = 3`.
+Теперь **сделайте то же самое с предсказаниями классов.** Предположим, `n_classes = 3`.
 
 ![](./img/predconv4.jpg)
 
-Similar to before, these channels represent the class scores for the priors at that position.
+Как и раньше, эти каналы представляют собой оценки классов для priors в этой ячейке.
 
-Now that we understand what the predictions for the feature map from `conv9_2` look like, we can **reshape them into a more amenable form.**
+Теперь, когда мы понимаем, как выглядят предсказания для карты признаков из `conv9_2`, мы можем **придать им более удобную форму.**
 
 ![](./img/reshaping1.jpg)
 
-We have arranged the `150` predictions serially. To the human mind, this should appear more intuitive.
+Мы расположили `150` предсказаний последовательно. Человеческому разуму это должно казаться более интуитивным.
 
-But let's not stop here. We could do the same for the predictions for _all_ layers and stack them together.
+Но давайте не будем останавливаться на достигнутом. Мы могли бы сделать то же самое для предсказаний _всех_ слоев и сложить их вместе.
 
-We calculated earlier that there are a total of 8732 priors defined for our model. Therefore, there will be **8732 predicted boxes in encoded-offset form, and 8732 sets of class scores**.
+Ранее мы подсчитали, что для нашей модели определено в общей сложности 8732 priors. Таким образом, будет **8732 предсказанных бокса в форме закодированных смещений и 8732 набора оценок классов**.
 
 ![](./img/reshaping2.jpg)
 
-**This is the final output of the prediction stage.** A stack of boxes, if you will, and estimates for what's in them.
+**Это окончательный результат для этапа предсказания.** Стопка боксов, если хотите, с оценками того, что в них находится.
 
-It's all coming together, isn't it? If this is your first rodeo in object detection, I should think there's now a faint light at the end of the tunnel.
+Все складывается воедино, не так ли? Если это ваше первое родео по детекции объектов, я думаю, что теперь в конце туннеля виден слабый свет.
 
-### Multibox loss
+### Функция потерь для Multibox
 
-Based on the nature of our predictions, it's easy to see why we might need a unique loss function. Many of us have calculated losses in regression or classification settings before, but rarely, if ever, _together_.
+Основываясь на характере наших предсказаний, легко понять, почему нам может понадобиться уникальная функция потерь. Многие из нас раньше рассчитывали лосси в задачах регрессии или классификации, но редко, если вообще когда-либо, делали это _одновременно_.
 
-Obviously, our total loss must be an **aggregate of losses from both types of predictions** – bounding box localizations and class scores.
+Очевидно, что наш общий лосс должен представлять собой **совокупность лоссов от обеих типов предсказаний** – локализации ограничивающих боксов и оценок классов.
 
-Then, there are a few questions to be answered –
+Тогда остается ответить на несколько вопросов:
 
->_What loss function will be used for the regressed bounding boxes?_
+>_Какая функция потерь будет использоваться для регрессированных ограничивающих боксов?_
 
->_Will we use multiclass cross-entropy for the class scores?_
+>_Будем ли мы использовать многоклассовую перекрестную энтропию для оценок классов?_
 
->_In what ratio will we combine them?_
+>_В каком соотношении мы их объединим?_
 
->_How do we match predicted boxes to their ground truths?_
+>_Как мы сопоставляем предсказанные боксы с истинными (ground truths)?_
 
->_We have 8732 predictions! Won't most of these contain no object? Do we even consider them?_
+>_У нас есть 8732 предсказания! Разве большинство из них не будет содержать объектов? Мы их вообще будем рассматривать?_
 
 Phew. Let's get to work.
 
