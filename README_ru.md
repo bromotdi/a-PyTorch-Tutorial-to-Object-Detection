@@ -577,17 +577,17 @@ Priors позволяют нам сделать именно это!
 
    - Рассматриваем кандидата с наивысшей оценкой. Исключаем всех кандидатов с более низкими оценками, у которых коэффициент Жаккара с этим кандидатом превышает, скажем, `0.5`.
      
-   - Consider the next highest-scoring candidate still remaining in the pool. Eliminate all candidates with lesser scores that have a Jaccard overlap of more than `0.5` with this candidate.
+   - Рассматриваем следующего кандидата с наивысшей оценкой, который все еще остается в выборке. Исключаем всех кандидатов с более низкими оценками, у которых коэффициент Жаккара с этим кандидатом превышает `0.5`.
 
-  - Repeat until you run through the entire sequence of candidates.
+   - Повторяем действия, пока не пройдем по всей выборке кандидатов.
 
-The end result is that you will have just a single box – the very best one – for each object in the image.
+В конечном итоге у нас будет только один бокс – самый лучший – для каждого объекта на изображении.
 
 ![](./img/nms4.PNG)
 
-Non-Maximum Suppression is quite crucial for obtaining quality detections.
+Non-Maximum Suppression (NMS) является весьма важным этапом для получения качественной детекции.
 
-Happily, it's also the final step.
+К счастью, это также последний этап.
 
 # Implementation
 
