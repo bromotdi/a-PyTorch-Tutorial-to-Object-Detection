@@ -531,53 +531,53 @@ Priors позволяют нам сделать именно это!
 
 - У нас есть 8732 предсказанных бокса, представленных в виде смещений `(g_c_x, g_c_y, g_w, g_h)` относительно их соответствующих priors. Декодируем их в граничные координаты, которые, на самом деле, можно интерпретировать напрямую.
 
-- Then, for each _non-background_ class,
+- Затем для каждого _не фонового_ класса:
 
-  - Extract the scores for this class for each of the 8732 boxes.
+   - Извлекаем оценки для этого класса из всех 8732 боксов.
 
-  - Eliminate boxes that do not meet a certain threshold for this score.
+   - Удаляем боксы, которые не соответствуют определенному порогу оценки.
 
-  - The remaining (uneliminated) boxes are candidates for this particular class of object.
+   - Оставшиеся (не удаленные) боксы являются кандидатами для данного класса объекта.
 
-At this point, if you were to draw these candidate boxes on the original image, you'd see **many highly overlapping boxes that are obviously redundant**. This is because it's extremely likely that, from the thousands of priors at our disposal, more than one prediction corresponds to the same object.
+На этом этапе, если бы вы нарисовали эти блоки-кандидаты на исходном изображении, вы бы увидели **множество сильно перекрывающихся боксов, которые явно избыточны**. Это потому, что весьма вероятно, что из тысяч priors, имеющихся в нашем распоряжении, одному и тому же объекту соответствует более одного предсказания.
 
-For instance, consider the image below.
+Для примера, рассмотрим изображение ниже.
 
 ![](./img/nms1.PNG)
 
-There's clearly only three objects in it – two dogs and a cat. But according to the model, there are _three_ dogs and _two_ cats.
+В этом изображении только три объекта — две собаки и кошка. Но согласно модели, есть _три_ собаки и _две_ кошки.
 
-Mind you, this is just a mild example. It could really be much, much worse.
+Имейте в виду, это лайтовый пример. На самом деле все могло быть намного, намного хуже.
 
-Now, to you, it may be obvious which boxes are referring to the same object. This is because your mind can process that certain boxes coincide significantly with each other and a specific object.
+Теперь вам может быть очевидно, какие боксы относятся к одному и тому же объекту. Это потому, что ваш разум может осознать, что определенные боксы существенно совпадают друг с другом и с конкретным объектом.
 
-In practice, how would this be done?
+Но как это сделать на практике?
 
-First, **line up the candidates for each class in terms of how _likely_ they are**.
+Во-первых, **выстраиваем кандидатов для каждого класса в зависимости от их _вероятности_**.
 
 ![](./img/nms2.PNG)
 
-We've sorted them by their scores.
+Мы отсортировали кандидатов по их оценкам.
 
-The next step is to find which candidates are redundant. We already have a tool at our disposal to judge how much two boxes have in common with each other – the Jaccard overlap.
+Следующий шаг – выяснить, какие кандидаты являются избыточными. В нашем распоряжении уже есть инструмент для определения того, насколько два бокса схожи между собой – коэффициент Жаккара.
 
-So, if we were to **draw up the Jaccard similarities between all the candidates in a given class**, we could evaluate each pair and **if found to overlap significantly, keep only the _more likely_ candidate**.
+Итак, если бы нам нужно было **определить меру сходства Жаккара между всеми кандидатами в данном классе**, мы могли бы оценить каждую пару и **если обнаружится, что они значительно перекрываются, оставить только _более вероятного_ кандидата**.
 
 ![](./img/nms3.jpg)
 
-Thus, we've eliminated the rogue candidates – one of each animal.
+Таким образом, мы исключили кандидатов-изгоев – по одному для каждого животного.
 
-This process is called __Non-Maximum Suppression (NMS)__ because when multiple candidates are found to overlap significantly with each other such that they could be referencing the same object, **we suppress all but the one with the maximum score**.
+Этот процесс называется __подавление не-максимумов (Non-Maximum Suppression (NMS)__, потому что, когда обнаруживается, что несколько кандидатов значительно перекрываются друг с другом и могут ссылаться на один и тот же объект, **мы подавляем всех, кроме одного с максимальной оценкой**.
 
-Algorithmically, it is carried out as follows –
+Алгоритмически это осуществляется следующим образом:
 
-- Upon selecting candidates for each _non-background_ class,
+- При выборе кандидатов для каждого _не фонового_ класса,
 
-  - Arrange candidates for this class in order of decreasing likelihood.
+   - Упорядочиваем кандидатов для этого класса в порядке убывания вероятности.
 
-  - Consider the candidate with the highest score. Eliminate all candidates with lesser scores that have a Jaccard overlap of more than, say, `0.5` with this candidate.
-
-  - Consider the next highest-scoring candidate still remaining in the pool. Eliminate all candidates with lesser scores that have a Jaccard overlap of more than `0.5` with this candidate.
+   - Рассматриваем кандидата с наивысшей оценкой. Исключаем всех кандидатов с более низкими оценками, у которых коэффициент Жаккара с этим кандидатом превышает, скажем, `0.5`.
+     
+   - Consider the next highest-scoring candidate still remaining in the pool. Eliminate all candidates with lesser scores that have a Jaccard overlap of more than `0.5` with this candidate.
 
   - Repeat until you run through the entire sequence of candidates.
 
