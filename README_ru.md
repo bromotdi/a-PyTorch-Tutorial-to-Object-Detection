@@ -477,59 +477,59 @@ Priors позволяют нам сделать именно это!
 
 ![](./img/matching2.jpg)
 
-Now, **each prior has a match**, positive or negative. By extension, **each prediction has a match**, positive or negative.
+Теперь **для каждого prior есть совпадение**, положительное или отрицательное. В более широком смысле, **у каждого предсказания  есть совпадение**, положительное или отрицательное.
 
-Predictions that are positively matched with an object now have ground truth coordinates that will serve as **targets for localization**, i.e. in the _regression_ task. Naturally, there will be no target coordinates for negative matches.
+Предсказания, положительно соотнесенные с объектом, теперь имеют истинные координаты, которые будут служить **таргетами для локализации**, т. е. для задачи _регрессии_. Естественно, для отрицательных совпадений целевых координат не будет.
 
-All predictions have a ground truth label, which is either the type of object if it is a positive match or a _background_ class if it is a negative match. These are used as **targets for class prediction**, i.e. the _classification_ task.
+Все предсказания имеют истинные лейбли, которые представляет собой либо класс объекта, если совпадение положительное, либо класс _background_, если совпадение отрицательное. Они используются в качестве **таргетов для предсказания классов**, т.е. для задачи _классификации_.
 
-#### Localization loss
+#### Функция потерь для локализации
 
-We have **no ground truth coordinates for the negative matches**. This makes perfect sense. Why train the model to draw boxes around empty space?
+У нас **нет истинных координат для отрицательных совпадений**. Это вполне логично. Зачем обучать модель рисовать боксы вокруг пустого пространства?
 
-Therefore, the localization loss is computed only on how accurately we regress positively matched predicted boxes to the corresponding ground truth coordinates.
+Таким образом, функция потерь для локализации рассчитывается только на основе того, насколько точно мы регрессируем положительно совпадающие предсказанные боксы к соответствующим истинным координатам.
 
-Since we predicted localization boxes in the form of offsets `(g_c_x, g_c_y, g_w, g_h)`, we would also need to encode the ground truth coordinates accordingly before we calculate the loss.
+Поскольку мы предсказали боксы локализации в виде смещений `(g_c_x, g_c_y, g_w, g_h)`, нам также необходимо будет соответствующим образом закодировать истинные координаты перед вычислением лоссов.
 
-The localization loss is the averaged **Smooth L1** loss between the encoded offsets of positively matched localization boxes and their ground truths.
+Функция потерь для локализации — это усредненное значение лосса **Smooth L1** между закодированными смещениями положительно совпадающих боксов локализации и их ground truths.
 
 ![](./img/locloss.jpg)
 
-#### Confidence loss
+#### Потери достоверности (Confidence loss)
 
-Every prediction, no matter positive or negative, has a ground truth label associated with it. It is important that the model recognizes both objects and a lack of them.
+Каждое предсказание, независимо от того, положительное или отрицательное, имеет связанный с ним истинный лейбл. Важно, чтобы модель распознавала как объекты, так и их отсутствие.
 
-However, considering that there are usually only a handful of objects in an image, **the vast majority of the thousands of predictions we made do not actually contain an object**. As Walter White would say, _tread lightly_. If the negative matches overwhelm the positive ones, we will end up with a model that is less likely to detect objects because, more often than not, it is taught to detect the _background_ class.
+Однако, учитывая, что на изображении обычно присутствует лишь несколько объектов, **подавляющее большинство из тысяч сделанных нами предсказаний на самом деле не содержат объектов**. Как сказал бы Уолтер Уайт, _действуйте осторожно_. Если отрицательные совпадения преобладают над положительными, мы получим модель, которая с меньшей вероятностью обнаружит объекты, поскольку чаще всего ее обучают обнаруживать класс _background_.
 
-The solution may be obvious – limit the number of negative matches that will be evaluated in the loss function. But how do we choose?
+Решение может быть очевидным — ограничить количество отрицательных совпадений, которые будут оцениваться функцией потерь. Но как мы выбираем, какие из них исключить?
 
-Well, why not use the ones that the model was most _wrong_ about? In other words, only use those predictions where the model found it hardest to recognize that there are no objects. This is called **Hard Negative Mining**.
+Почему бы не использовать те случаи, в которых модель _ошибалась_ больше всего? Другими словами, использовать только те предсказания, в которых модели было сложнее всего распознать отсутствие объектов. Этот подход называется **Hard Negative Mining**.
 
-The number of hard negatives we will use, say `N_hn`, is usually a fixed multiple of the number of positive matches for this image. In this particular case, the authors have decided to use three times as many hard negatives, i.e. `N_hn = 3 * N_p`. The hardest negatives are discovered by finding the Cross Entropy loss for each negatively matched prediction and choosing those with top `N_hn` losses.
+Количество сложных отрицательных примеров (hard negatives), которые мы будем использовать, скажем, `N_hn`, обычно является фиксированным и кратным количеству положительных совпадений для этого изображения. В данном конкретном случае авторы решили использовать в три раза больше сложных отрицательных примеров, т. е. `N_hn = 3 * N_p`. Сложные отрицательные примеры определяются путем вычисления лосса перекрестной энтропии (Cross Entropy - CE) для каждого отрицательно совпадающего предсказания и выбора тех `N_hn`, у которых лосс самый большой.
 
-Then, the confidence loss is simply the sum of the **Cross Entropy** losses among the positive and hard negative matches.
+Тогда confidence loss — это просто сумма значений функции потерь **перекрестной энтропии** среди положительных и сложных отрицательных совпадений.
 
 ![](./img/confloss.jpg)
 
-You will notice that it is averaged by the number of positive matches.
+Вы заметите, что confidence loss усредняется по количеству положительных совпадений.
 
-#### Total loss
+#### Сложенный лосс
 
-The **Multibox loss is the aggregate of the two losses**, combined in a ratio `α`.
+**Сложенный лосс от Multibox представляют собой совокупность двух лоссов**, объединенных в соотношении `α`.
 
 ![](./img/totalloss.jpg)
 
-In general, we needn't decide on a value for `α`. It could be a learnable parameter.
+В общем, нам не обязательно выбирать значение для `α`. Это может быть обучаемый параметр.
 
-For the SSD, however, the authors simply use `α = 1`, i.e. add the two losses. We'll take it!
+Однако в SSD авторы используют `α = 1`, т.е. просто складывают два лосса. Мы будем придерживаться этого!
 
-### Processing predictions
+### Обработка предсказаний
 
-After the model is trained, we can apply it to images. However, the predictions are still in their raw form – two tensors containing the offsets and class scores for 8732 priors. These would need to be processed to **obtain final, human-interpretable bounding boxes with labels.**
+После обучения модели мы можем применить ее к изображениям. Однако предсказания все еще находятся в необработанной форме — два тензора, содержащие смещения и оценки классов для 8732 priors. Их необходимо будет обработать, чтобы **получить окончательные, понятные человеку, ограничивающие боксы с лейблами.**
 
-This entails the following –
+Это влечет за собой следующее –
 
-- We have 8732 predicted boxes represented as offsets `(g_c_x, g_c_y, g_w, g_h)` from their respective priors. Decode them to boundary coordinates, which are actually directly interpretable.
+- У нас есть 8732 предсказанных бокса, представленных в виде смещений `(g_c_x, g_c_y, g_w, g_h)` относительно их соответствующих priors. Декодируем их в граничные координаты, которые, на самом деле, можно интерпретировать напрямую.
 
 - Then, for each _non-background_ class,
 
