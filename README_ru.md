@@ -786,7 +786,7 @@ std = [0.229, 0.224, 0.225]
 
 Кроме того, мы кодируем координаты 8732 совпавших объектов в `object_for_each_prior` в форме смещения `(g_c_x, g_c_y, g_w, g_h)` относительно этих priors, чтобы сформировать **таргеты для задачи локализации**. Не все из этих 8732 таргетов локализации имеют смысл. Как мы обсуждали ранее, только предсказания, возникающие из нефоновых priors, будут регрессированы к таргету.
 
-The **localization loss** is the [Smooth L1 loss](https://pytorch.org/docs/stable/nn.html#torch.nn.SmoothL1Loss) over the positive matches.
+**Функция потерь для задачи локализации** - это [Smooth L1 loss](https://pytorch.org/docs/stable/nn.html#torch.nn.SmoothL1Loss) по положительным совпадениям.
 
 Perform Hard Negative Mining – rank class predictions matched to _background_, i.e. negative matches, by their individual [Cross Entropy losses](https://pytorch.org/docs/stable/nn.html#torch.nn.CrossEntropyLoss). The **confidence loss** is the Cross Entropy loss over the positive matches and the hardest negative matches. Nevertheless, it is averaged only by the number of positive matches.
 
