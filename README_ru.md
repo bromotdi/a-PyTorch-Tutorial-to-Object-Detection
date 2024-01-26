@@ -706,85 +706,85 @@ std = [0.229, 0.224, 0.225]
 
 - Случайным образом изображение обрезается, т. е. **выполняется операция _увеличения_ изображения.** Это помогает научиться обнаруживать большие или обрезаные объекты. Некоторые объекты могут даже быть полностью вырезаны. Размеры обрезки должны быть в пределах от `0.3` до `1` раза от исходных размеров. Соотношение сторон должно находиться в диапазоне от `0.5` до `2`. Каждая обрезка сделана так, чтобы оставался хотя бы один ограничивающий бокс с коэффициентом Жаккара равным `0`, `0.1`, `0.3`, `0.5`, `0.7` или `0.9`, выбранный случайным образом. Кроме того, все оставшиеся ограничивающие боксы, центры которых больше не находятся на изображении в результате обрезки, отбрасываются. Также есть вероятность того, что изображение вообще не обрезано.
 
-- With a 50% chance, **horizontally flip** the image.
+- С вероятностью 50% изображение **отображается по горизонтали**.
 
-- **Resize** the image to `300, 300` pixels. This is a requirement of the SSD300.
+- **Изменяется размер** изображения до `300, 300` пикселей. Это требование SSD300.
 
-- Convert all boxes from **absolute to fractional boundary coordinates.** At all stages in our model, all boundary and center-size coordinates will be in their fractional forms.
+- Координаты всех боксов преобразовуются из **абсолютных в дробные.** На всех этапах нашей модели все координаты размеров и центра будут иметь дробную форму.
 
-- **Normalize** the image with the mean and standard deviation of the ImageNet data that was used to pretrain our VGG base.
+- Изображение **нормализовуется** с помощью среднего и стандартного отклонения данных ImageNet, которые использовались для предварительного обучения нашей базовой модели VGG.
 
-As mentioned in the paper, these transformations play a crucial role in obtaining the stated results.
+Как отмечено в статье, эти преобразования играют решающую роль в достижении заявленных результатов.
 
 #### PyTorch DataLoader
 
-The `Dataset` described above, `PascalVOCDataset`, will be used by a PyTorch [`DataLoader`](https://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader) in `train.py` to **create and feed batches of data to the model** for training or evaluation.
+Описанный выше набор данных, `PascalVOCDataset`, будет использоваться PyTorch [`DataLoader`](https://pytorch.org/docs/master/data.html#torch.utils.data.DataLoader) в файле `train .py` для **создания и передачи пакетов данных в модель** для обучения или оценки.
 
-Since the number of objects vary across different images, their bounding boxes, labels, and difficulties cannot simply be stacked together in the batch. There would be no way of knowing which objects belong to which image.
+Поскольку количество объектов на разных изображениях варьируется, их ограничивающие боксы, лейблы и сложность детекции нельзя просто сложить вместе в батче. Нельзя было бы определить, какие объекты какому изображению принадлежат.
 
-Instead, we need to **pass a collating function to the `collate_fn` argument**, which instructs the `DataLoader` about how it should combine these varying size tensors. The simplest option would be to use Python lists.
+Вместо этого нам нужно **передать функцию слияния (collating function) аргументу `collate_fn`**, которая указывает `DataLoader`, каким образом следует комбинировать эти тензоры разного размера. Самый простой вариант — использовать списки Python.
 
-### Base Convolutions
+### Базовые свертки
 
-See `VGGBase` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `VGGBase` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-Here, we **create and apply base convolutions.**
+Здесь мы **создаем и применяем базовые свертки.**
 
-The layers are initialized with parameters from a pretrained VGG-16 with the `load_pretrained_layers()` method.
+Слои инициализируются параметрами предварительно обученной VGG-16 с помощью метода `load_pretrained_layers()`.
 
-We're especially interested in the lower-level feature maps that result from `conv4_3` and `conv7`, which we return for use in subsequent stages.
+Нас особенно интересуют карты признаков более низкого уровня, полученные из `conv4_3` и `conv7`, которые мы возвращаем для использования на последующих этапах.
 
-### Auxiliary Convolutions
+### Вспомогательные свертки (Auxiliary Convolutions)
 
-See `AuxiliaryConvolutions` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `AuxiliaryConvolutions` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-Here, we **create and apply auxiliary convolutions.**
+Здесь мы **создаем и применяем вспомогательные свертки.**
 
-Use a [uniform Xavier initialization](https://pytorch.org/docs/stable/nn.html#torch.nn.init.xavier_uniform_) for the parameters of these layers.
+Мы используем [равномерную инициализацию Ксавье](https://pytorch.org/docs/stable/nn.html#torch.nn.init.xavier_uniform_) для параметров этих слоев.
 
-We're especially interested in the higher-level feature maps that result from `conv8_2`, `conv9_2`, `conv10_2` and `conv11_2`, which we return for use in subsequent stages.
+Нас особенно интересуют карты признаков более высокого уровня, полученные из `conv8_2`, `conv9_2`, `conv10_2` и `conv11_2`, которые мы возвращаем для использования на последующих этапах.
 
-### Prediction Convolutions
+### Свертки предсказаний
 
-See `PredictionConvolutions` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `PredictionConvolutions` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-Here, we **create and apply localization and class prediction convolutions** to the feature maps from `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2` and `conv11_2`.
+Здесь мы **создаем и применяем свертки для локализации и предсказаний классов** к картам признаков из `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2` и `conv11_2`.
 
-These layers are initialized in a manner similar to the auxiliary convolutions.
+Эти слои инициализируются аналогично вспомогательным сверткам.
 
-We also **reshape the resulting prediction maps and stack them** as discussed. Note that reshaping in PyTorch is only possible if the original tensor is stored in a [contiguous](https://pytorch.org/docs/stable/tensors.html#torch.Tensor.contiguous) chunk of memory.
+Мы также **изменяем форму полученных карт предсказаний и объединяем их**, как обсуждалось ранее. Обратите внимание, что изменение формы в PyTorch возможно только в том случае, если исходный тензор хранится в [последовательном](https://pytorch.org/docs/stable/tensors.html#torch.Tensor.contigious) блоке памяти.
 
-As expected, the stacked localization and class predictions will be of dimensions `8732, 4` and `8732, 21` respectively.
+Как и ожидалось, объединенные предсказания локализации и класса будут иметь размеры `8732, 4` и `8732, 21` соответственно.
 
-### Putting it all together
+### Собираем все вместе
 
-See `SSD300` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `SSD300` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-Here, the **base, auxiliary, and prediction convolutions are combined** to form the SSD.
+Здесь **базовые, вспомогательные и прогнозирующие свертки объединяются** для формирования SSD.
 
-There is a small detail here – the lowest level features, i.e. those from `conv4_3`, are expected to be on a significantly different numerical scale compared to its higher-level counterparts. Therefore, the authors recommend L2-normalizing and then rescaling _each_ of its channels by a learnable value.
+Небольшая деталь: ожидается, что признаки самого низкого уровня, то есть признаки из `conv4_3`, будут находиться в значительно другом числовом масштабе по сравнению с их аналогами более высокого уровня. Поэтому авторы сначала рекомендуют выполнить L2-нормализацию, а затем масштабировать _каждый_ его канал на обучаемое значение.
 
 ### Priors
 
-See `create_prior_boxes()` under `SSD300` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `create_prior_boxes()` внутри класса `SSD300` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-This function **creates the priors in center-size coordinates** as defined for the feature maps from `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2` and `conv11_2`, _in that order_. Furthermore, for each feature map, we create the priors at each tile by traversing it row-wise.
+Эта функция **создает priors в center-size координатах** в соответствии с определенными требованиями для карт признаков из `conv4_3`, `conv7`, `conv8_2`, `conv9_2`, `conv10_2` и `conv11_2`, _в указанном порядке_. Кроме того, для каждой карты признаков мы создаем priors в каждой ячейки, проходя по ним построчно.
 
-This ordering of the 8732 priors thus obtained is very important because it needs to match the order of the stacked predictions.
+Полученный таким образом порядок 8732 priors очень важен, поскольку он должен соответствовать порядку объединенных предсказаний.
 
 ### Multibox Loss
 
-See `MultiBoxLoss` in [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
+Посмотрите на `MultiBoxLoss` в [`model.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/model.py).
 
-Two empty tensors are created to store localization and class prediction targets, i.e. _ground truths_, for the 8732 predicted boxes in each image.
+Два пустых тензора создаются для хранения таргетов локализации и предсказаний классов, то есть _ground truths_, для 8732 предсказанных боксов на каждом изображении.
 
-We **find the ground truth object with the maximum Jaccard overlap for each prior**, which is stored in `object_for_each_prior`.
+Мы **находим истинный объект с максимальным коэффициентом Жаккара для каждого prior**, который хранится в `object_for_each_prior`.
 
-We want to avoid the rare situation where not all of the ground truth objects have been matched. Therefore, we also **find the prior with the maximum overlap for each ground truth object**, stored in `prior_for_each_object`. We explicitly add these matches to `object_for_each_prior` and artificially set their overlaps to a value above the threshold so they are not eliminated.
+Мы хотим избежать редкой ситуации, когда не все объекты ground truth были сопоставлены. Поэтому мы также **находим prior с максимальным перекрытием для каждого объекта ground truth**, хранящийся в `prior_for_each_object`. Мы явно добавляем эти совпадения в `object_for_each_prior` и искусственно устанавливаем для их перекрытия значение выше порогового значения, чтобы они не были исключены.
 
-Based on the matches in `object_for_each prior`, we set the corresponding labels, i.e. **targets for class prediction**, to each of the 8732 priors. For those priors that don't overlap significantly with their matched objects, the label is set to _background_.
+На основе совпадений в `object_for_each_prior` мы устанавливаем соответствующие лейблы, то есть **таргеты для предсказаний класса**, каждому из 8732 priors. Для тех priors, которые незначительно перекрываются с соответствующими им объектами, лейбл устанавливается на _фон_.
 
-Also, we encode the coordinates of the 8732 matched objects in `object_for_each prior` in offset form `(g_c_x, g_c_y, g_w, g_h)` with respect to these priors, to form the **targets for localization**. Not all of these 8732 localization targets are meaningful. As we discussed earlier, only the predictions arising from the non-background priors will be regressed to their targets.
+Кроме того, мы кодируем координаты 8732 совпавших объектов в `object_for_each_prior` в форме смещения `(g_c_x, g_c_y, g_w, g_h)` относительно этих priors, чтобы сформировать **таргеты для задачи локализации**. Не все из этих 8732 таргетов локализации имеют смысл. Как мы обсуждали ранее, только предсказания, возникающие из нефоновых priors, будут регрессированы к таргету.
 
 The **localization loss** is the [Smooth L1 loss](https://pytorch.org/docs/stable/nn.html#torch.nn.SmoothL1Loss) over the positive matches.
 
