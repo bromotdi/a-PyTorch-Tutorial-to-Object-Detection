@@ -499,7 +499,7 @@ Priors позволяют нам сделать именно это!
 
 Каждое предсказание, независимо от того, положительное или отрицательное, имеет связанный с ним истинный лейбл. Важно, чтобы модель распознавала как объекты, так и их отсутствие.
 
-Однако, учитывая, что на изображении обычно присутствует лишь несколько объектов, **подавляющее большинство из тысяч сделанных нами предсказаний на самом деле не содержат объектов**. Как сказал бы Уолтер Уайт, _действуйте осторожно_. Если отрицательные совпадения преобладают над положительными, мы получим модель, которая с меньшей вероятностью обнаружит объекты, поскольку чаще всего ее обучают обнаруживать класс _background_.
+Однако, учитывая, что на изображении обычно присутствует лишь несколько объектов, **подавляющее большинство из тысяч сделанных нами предсказаний на самом деле не содержат объектов**. Как сказал бы Уолтер Уайт, _действуйте осторожно_. Если отрицательные совпадения преобладают над положительными, мы получим модель, которая с меньшей вероятностью обнаружит объекты, поскольку чаще всего ее обучают обнаруживать класс _фона_.
 
 Решение может быть очевидным — ограничить количество отрицательных совпадений, которые будут оцениваться функцией потерь. Но как мы выбираем, какие из них исключить?
 
@@ -678,33 +678,33 @@ std = [0.229, 0.224, 0.225]
 
 Эта функция разбирает скачанные данные и сохраняет следующие файлы:
 
-- A **JSON file for each split with a list of the absolute filepaths of `I` images**, where `I` is the total number of images in the split.
+– **JSON-файл для каждого набора данных с перечнем абсолютных путей к файлам `I` изображений**, где `I` — общее количество изображений в наборе.
 
-- A **JSON file for each split with a list of `I` dictionaries containing ground truth objects, i.e. bounding boxes in absolute boundary coordinates, their encoded labels, and perceived detection difficulties**. The `i`th dictionary in this list will contain the objects present in the `i`th image in the previous JSON file.
+- **JSON-файл для каждого набора со списком словарей `I`, содержащих истинные объекты, т. е. ограничивающие боксы в абсолютных граничных координатах, их закодированные лейбли и предполагаемые сложности детекции обьектов**. Словарь с индексом `i` в этом перечне будет содержать объекты, присутствующие на `i`-том изображении в предыдущем JSON-файле.
 
-- A **JSON file which contains the `label_map`**, the label-to-index dictionary with which the labels are encoded in the previous JSON file. This dictionary is also available in [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py) and directly importable.
+- **JSON-файл, содержащий `label_map`**, словарь сопоставления лейблов и индексов, с помощью которого лейбли кодируются в предыдущем файле JSON. Этот словарь также доступен в [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py) и его можно напрямую импортировать.
 
 #### PyTorch Dataset
 
-See `PascalVOCDataset` in [`datasets.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/datasets.py).
+Посмотрите на класс `PascalVOCDataset` в файле [`datasets.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/datasets.py).
 
-This is a subclass of PyTorch [`Dataset`](https://pytorch.org/docs/master/data.html#torch.utils.data.Dataset), used to **define our training and test datasets.** It needs a `__len__` method defined, which returns the size of the dataset, and a `__getitem__` method which returns the `i`th image, bounding boxes of the objects in this image, and labels for the objects in this image, using the JSON files we saved earlier.
+Этот класс является подклассом PyTorch [`Dataset`](https://pytorch.org/docs/master/data.html#torch.utils.data.Dataset) и используется для **определения наших обучающих и тестовых наборов данных.** В нем определены метод `__len__`, который возвращает размер набора данных, и метод `__getitem__`, который возвращает `i`-е изображение, ограничивающие боксы и лейбли для объектов на этом изображении, используя ранее сохраненные JSON-файлы.
 
-You will notice that it also returns the perceived detection difficulties of each of these objects, but these are not actually used in training the model. They are required only in the [Evaluation](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#evaluation) stage for computing the Mean Average Precision (mAP) metric. We also have the option of filtering out _difficult_ objects entirely from our data to speed up training at the cost of some accuracy.
+Вы заметите, что он также возвращает предполагаемые сложности для детекции каждого из этих объектов, но на самом деле они не используются при обучении модели. Они необходимы только на этапе [Оценки](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#evaluation) для вычисления показателя усреднённой средней точности (mean Average Precision - mAP). У нас также есть возможность полностью отфильтровать _сложные_ объекты из наших данных, чтобы ускорить обучение за счет потери некоторой точности.
 
-Additionally, inside this class, **each image and the objects in them are subject to a slew of transformations** as described in the paper and outlined below.
+Кроме того, внутри этого класса **каждое изображение и объекты в них подвергаются целому ряду трансформаций**, как описано в статье и приведено ниже.
 
-#### Data Transforms
+#### Преобразование данных
 
-See `transform()` in [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py).
+Посмотрите на `transform()` в [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py).
 
-This function applies the following transformations to the images and the objects in them –
+Эта функция применяет следующие преобразования к изображениям и объектам в них:
 
-- Randomly **adjust brightness, contrast, saturation, and hue**, each with a 50% chance and in random order.
+- Случайным образом **изменяется яркость, контрастность, насыщенность и оттенок**, каждый каждый с 50% вероятностью и в случайном порядке.
 
-- With a 50% chance, **perform a _zoom out_ operation** on the image. This helps with learning to detect small objects. The zoomed out image must be between `1` and `4` times as large as the original. The surrounding space could be filled with the mean of the ImageNet data.
+- С вероятностью 50 % **выполняется операция _уменьшения_ изображения.** Это помогает научиться детектировать мелкие объекты. Уменьшенное изображение должно быть от `1` до `4` раз больше оригинала. Окружающее пространство может быть заполнено средним значением данных ImageNet.
 
-- Randomly crop image, i.e. **perform a _zoom in_ operation.** This helps with learning to detect large or partial objects. Some objects may even be cut out entirely. Crop dimensions are to be between `0.3` and `1` times the original dimensions. The aspect ratio is to be between `0.5` and `2`. Each crop is made such that there is at least one bounding box remaining that has a Jaccard overlap of either `0`, `0.1`, `0.3`, `0.5`, `0.7`, or `0.9`, randomly chosen, with the cropped image. In addition, any bounding boxes remaining whose centers are no longer in the image as a result of the crop are discarded. There is also a chance that the image is not cropped at all.
+- Случайным образом изображение обрезается, т. е. **выполняется операция _увеличения_ изображения.** Это помогает научиться обнаруживать большие или обрезаные объекты. Некоторые объекты могут даже быть полностью вырезаны. Размеры обрезки должны быть в пределах от `0.3` до `1` раза от исходных размеров. Соотношение сторон должно находиться в диапазоне от `0.5` до `2`. Каждая обрезка сделана так, чтобы оставался хотя бы один ограничивающий бокс с коэффициентом Жаккара равным `0`, `0.1`, `0.3`, `0.5`, `0.7` или `0.9`, выбранный случайным образом. Кроме того, все оставшиеся ограничивающие боксы, центры которых больше не находятся на изображении в результате обрезки, отбрасываются. Также есть вероятность того, что изображение вообще не обрезано.
 
 - With a 50% chance, **horizontally flip** the image.
 
