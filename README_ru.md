@@ -589,37 +589,37 @@ Non-Maximum Suppression (NMS) является весьма важным эта�
 
 К счастью, это также последний этап.
 
-# Implementation
+# Реализация
 
-The sections below briefly describe the implementation.
+В разделах ниже кратко описывается реализация.
 
-They are meant to provide some context, but **details are best understood directly from the code**, which is quite heavily commented.
+Они предназначены для предоставления некоторого контекста, но **детали лучше всего понимать непосредственно из кода**, который довольно подробно прокомментирован.
 
-### Dataset
+### Набор данных
 
-We will use Pascal Visual Object Classes (VOC) data from the years 2007 and 2012.
+Мы будем использовать данные Pascal Visual Object Classes (VOC) за 2007 и 2012 годы.
 
-#### Description
+#### Описание
 
-This data contains images with twenty different types of objects.
+Эти данные содержат изображения с двадцатью различными классами объектов.
 
 ```python
 {'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor'}
 ```
 
-Each image can contain one or more ground truth objects.
+Каждое изображение может содержать один или несколько ground truth объектов.
 
-Each object is represented by –
+Каждый объект представлен:
 
-- a bounding box in absolute boundary coordinates
+- ограничивающим боксом в абсолютных граничных координатах
 
-- a label (one of the object types mentioned above)
+- лейблом (один из классов объектов, упомянутых выше)
 
--  a perceived detection difficulty (either `0`, meaning _not difficult_, or `1`, meaning _difficult_)
+- предполагаемой сложностю детекции (либо `0`, что означает _несложно_, либо `1`, что означает _сложно_)
 
-#### Download
+#### Скачать
 
-Specifically, you will need to download the following VOC datasets –
+В частности, вам  нужно скачать следующие наборы данных VOC (Visual Object Classes):
 
 - [2007 _trainval_](http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar) (460MB)
 
@@ -627,56 +627,56 @@ Specifically, you will need to download the following VOC datasets –
 
 - [2007 _test_](http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar) (451MB)
 
-Consistent with the paper, the two _trainval_ datasets are to be used for training, while the VOC 2007 _test_ will serve as our test data.  
+Согласно статье, два набора данных _trainval_ будут использоваться для обучения, а VOC 2007 _test_ будет служить нашими тестовыми данными.
 
-Make sure you extract both the VOC 2007 _trainval_ and 2007 _test_ data to the same location, i.e. merge them.
+Убедитесь, что вы извлекли данные VOC 2007 _trainval_ и 2007 _test_ в одну и ту же директорию, т. е. объединили их.
 
-### Inputs to model
+### Входные данные для модели
 
-We will need three inputs.
+Нам понадобятся три типа входных данных.
 
-#### Images
+#### Изображения
 
-Since we're using the SSD300 variant, the images would need to be sized at `300, 300` pixels and in the RGB format.
+Поскольку мы используем вариант SSD300, изображения должны иметь размер `300, 300` пикселей и быть в RGB формате.
 
-Remember, we're using a VGG-16 base pretrained on ImageNet that is already available in PyTorch's `torchvision` module. [This page](https://pytorch.org/docs/master/torchvision/models.html) details the preprocessing or transformation we would need to perform in order to use this model – pixel values must be in the range [0,1] and we must then normalize the image by the mean and standard deviation of the ImageNet images' RGB channels.
+Помните, что мы используем предварительно обученную на ImageNet базовую модель VGG-16, которая уже доступна в модуле `torchvision` для PyTorch. [На этой странице](https://pytorch.org/docs/master/torchvision/models.html) приведены подробности предварительной обработки или преобразований, которые нам необходимо выполнить, чтобы использовать эту модель — значения пикселей должны находиться в диапазоне [0, 1], а затем мы должны нормализовать изображение по среднему и стандартному отклонению RGB-каналов изображений ImageNet.
 
 ```python
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 ```
 
-Also, PyTorch follows the NCHW convention, which means the channels dimension (C) must precede the size dimensions.
+Кроме того, PyTorch следует соглашению NCHW (батч N, канали C, высота H, ширина W), что означает, что количество каналов (C) должено предшествовать размерам изображения.
 
-Therefore, **images fed to the model must be a `Float` tensor of dimensions `N, 3, 300, 300`**, and must be normalized by the aforesaid mean and standard deviation. `N` is the batch size.
+Следовательно, **изображения, поступающие на вход модели, должны быть тензорами типа `Float` с размерностями `N, 3, 300, 300`** и их необходимо нормализировать по вышеупомянутому среднему значению и стандартному отклонению. `N` — размер батча.
 
-#### Objects' Bounding Boxes
+#### Ограничительные боксы объектов
 
-We would need to supply, for each image, the bounding boxes of the ground truth objects present in it in fractional boundary coordinates `(x_min, y_min, x_max, y_max)`.
+Нам нужно будет предоставить для каждого изображения ограничивающие боксы истинных объектов, присутствующих в нем, в дробных граничных координатах `(x_min, y_min, x_max, y_max)`.
 
-Since the number of objects in any given image can vary, we can't use a fixed size tensor for storing the bounding boxes for the entire batch of `N` images.
+Поскольку количество объектов на любом изображении может варьироваться, мы не можем использовать тензор фиксированного размера для хранения ограничивающих боксов для всего батча из `N` изображений.
 
-Therefore, **ground truth bounding boxes fed to the model must be a list of length `N`, where each element of the list is a `Float` tensor of dimensions `N_o, 4`**, where `N_o` is the number of objects present in that particular image.
+Следовательно, **ограничивающие боксы истинных объектов, поступающие на вход модели, должны быть списком длины `N`, где каждый элемент списка представляет собой тензор типа `Float` с размерностью `N_o, 4`**, где `N_o` — это количество объектов, присутствующих на данном изображении.
 
-#### Objects' Labels
+#### Лейбли объектов
 
-We would need to supply, for each image, the labels of the ground truth objects present in it.
+Необходимо предоставить для каждого изображения лейбли истинных объектов, присутствующих в нем.
 
-Each label would need to be encoded as an integer from `1` to `20` representing the twenty different object types. In addition, we will add a _background_ class with index `0`, which indicates the absence of an object in a bounding box. (But naturally, this label will not actually be used for any of the ground truth objects in the dataset.)
+Каждый лейбл должен быть закодирован целым числом от `1` до `20`, представляющим двадцать различных классов объектов. Кроме того, мы добавим класс _фона_ с индексом `0`, который указывает на отсутствие объекта в ограничивающем боксе. (Но, естественно, этот лейбл фактически не будет использоваться ни для одного из истинных объектов в наборе данных.)
 
-Again, since the number of objects in any given image can vary, we can't use a fixed size tensor for storing the labels for the entire batch of `N` images.
+Опять же, поскольку количество объектов на любом изображении может варьироваться, мы не можем использовать тензор фиксированного размера для хранения лейблов для всего батча из `N` изображений.
 
-Therefore, **ground truth labels fed to the model must be a list of length `N`, where each element of the list is a `Long` tensor of dimensions `N_o`**, where `N_o` is the number of objects present in that particular image.
+Следовательно, **лейбли ground truth, передаваемые в модель, должны представлять собой список длины `N`, где каждый элемент списка представляет собой `Long` тензор с размерностью `N_o`**, где `N_o` — количество объектов на данном изображении.
 
-### Data pipeline
+### Пайплайн обработки данных
 
-As you know, our data is divided into _training_ and _test_ splits.
+Как вы знаете, наши данные разделены на _обучающие_ и _тестовые_ наборы.
 
-#### Parse raw data
+#### Обработка исходных данных
 
-See `create_data_lists()` in [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py).
+Посмотрите на `create_data_lists()` в [`utils.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py).
 
-This parses the data downloaded and saves the following files –
+Эта функция разбирает скачанные данные и сохраняет следующие файлы:
 
 - A **JSON file for each split with a list of the absolute filepaths of `I` images**, where `I` is the total number of images in the split.
 
