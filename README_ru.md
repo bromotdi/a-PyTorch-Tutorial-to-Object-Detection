@@ -12,7 +12,7 @@
 
 ---
 
-**4 ноября 2023 г.**: 中文翻译 – китайский перевод этого руководства был любезно предоставлен пользователем [@zigerZZZ](https://github.com/zigerZZZ) – см. [README_zh.md](https:// github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/README_zh.md).
+**4 ноября 2023 г.**: 中文翻译 – китайский перевод этого руководства был любезно предоставлен пользователем [@zigerZZZ](https://github.com/zigerZZZ) – см. [README_zh.md](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/README_zh.md).
 
 ---
 
