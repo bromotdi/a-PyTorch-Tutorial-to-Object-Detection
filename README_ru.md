@@ -4,7 +4,7 @@
 
 Предполагается базовое знание PyTorch и сверточных нейронных сетей.
 
-Если вы новичок в PyTorch, сначала прочитайте [Глубокое обучение с PyTorch: 60-минутный блиц](https://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html) и [Изучение PyTorch на примерах](https:// pytorch.org/tutorials/beginner/pytorch_with_examples.html).
+Если вы новичок в PyTorch, сначала прочитайте [Глубокое обучение с PyTorch: 60-минутный блиц](https://pytorch.org/tutorials/beginner/deep_learning_60min_blitz.html) и [Изучение PyTorch на примерах](https://pytorch.org/tutorials/beginner/pytorch_with_examples.html).
 
 Вопросы, предложения или исправления можно публиковать как issues.
 
