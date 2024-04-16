@@ -96,7 +96,7 @@
 
 ---
 
-Дополнительные примеры можно найти в [конце руководства] (https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#some-more-examples).
+Дополнительные примеры можно найти в [конце руководства](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection#some-more-examples).
 
 ---
 
